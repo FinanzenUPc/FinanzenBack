@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 import os
 
 
@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     DEBUG: bool = False  # En Azure siempre False
 
     # PostgreSQL credentials from environment
-    POSTGRES_USER: str = None
-    POSTGRES_PASSWORD: str = None
-    POSTGRES_HOST: str = None
+    POSTGRES_USER: Optional[str] = None
+    POSTGRES_PASSWORD: Optional[str] = None
+    POSTGRES_HOST: Optional[str] = None
     POSTGRES_PORT: str = "5432"
-    POSTGRES_DB: str = None
+    POSTGRES_DB: Optional[str] = None
     POSTGRES_SSLMODE: str = "require"
 
     # Build DATABASE_URL dynamically (Azure ready)
