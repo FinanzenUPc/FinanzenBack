@@ -7,31 +7,37 @@ class Settings(BaseSettings):
     # API Settings
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Finanzen Backend"
-    DEBUG: bool = True
+    DEBUG: bool = False  # En Azure siempre False
 
-    # Database
-    DATABASE_URL: str = "postgresql://postgres:1234@localhost:5434/finanzen_db"
+    # PostgreSQL credentials from environment
+    POSTGRES_USER: str = None
+    POSTGRES_PASSWORD: str = None
+    POSTGRES_HOST: str = None
+    POSTGRES_PORT: str = "5432"
+    POSTGRES_DB: str = None
+    POSTGRES_SSLMODE: str = "require"
 
-    # PostgreSQL credentials (for scripts)
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "1234"
-    POSTGRES_DB: str = "finanzen_db"
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: str = "5434"
+    # Build DATABASE_URL dynamically (Azure ready)
+    @property
+    def DATABASE_URL(self):
+        # Si faltan variables → usar local SQLite
+        if not self.POSTGRES_HOST:
+            return "sqlite:///./local.db"
+
+        return (
+            f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            f"?sslmode={self.POSTGRES_SSLMODE}"
+        )
 
     # Security
     SECRET_KEY: str = "my-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # CORS - Permitir múltiples orígenes
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "http://localhost:5173"
-    ]
+    # CORS
+    BACKEND_CORS_ORIGINS: List[str] = []
 
-    # Permitir parseo de lista desde string (para Railway/Render)
     @property
     def cors_origins(self) -> List[str]:
         if isinstance(self.BACKEND_CORS_ORIGINS, str):
