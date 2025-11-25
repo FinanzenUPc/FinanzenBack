@@ -35,7 +35,6 @@ if not settings.DEBUG:
         allowed_hosts=[
             "localhost",
             "127.0.0.1",
-            "finanzenbackend-fednf3ejg0hheqaq.canadacentral-01.azurewebsites.net",
             "*.azurewebsites.net"
         ]
     )
