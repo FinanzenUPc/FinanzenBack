@@ -16,9 +16,19 @@ class TransactionService:
         return db.query(Transaction).filter(Transaction.usuario == usuario).offset(skip).limit(limit).all()
 
     @staticmethod
+    def count_user_transactions(db: Session, usuario: str) -> int:
+        """Count all transactions for a user."""
+        return db.query(Transaction).filter(Transaction.usuario == usuario).count()
+
+    @staticmethod
     def get_all_transactions(db: Session, skip: int = 0, limit: int = 1000) -> List[Transaction]:
         """Get all transactions."""
         return db.query(Transaction).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def count_all_transactions(db: Session) -> int:
+        """Count all transactions."""
+        return db.query(Transaction).count()
 
     @staticmethod
     def create_transaction(db: Session, transaction: TransactionCreate) -> Transaction:

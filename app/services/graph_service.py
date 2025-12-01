@@ -1,5 +1,6 @@
 """
 Graph Service - Manejo de construcción, conversión y estadísticas de grafos
+Solo se incluyen transacciones de tipo 'egreso' para el análisis de gastos.
 """
 from typing import Dict, List, Any, Optional
 from sqlalchemy.orm import Session
@@ -11,19 +12,27 @@ class GraphService:
     """Servicio para manejo de grafos financieros."""
 
     @staticmethod
-    def build_gt_from_db(db: Session) -> Dict[int, List[tuple]]:
+    def _get_egreso_transactions(db: Session) -> List[Transaction]:
         """
-        Construye Grafo de Transacciones (GT) desde la base de datos.
-
-        Conecta transacciones secuenciales del mismo usuario.
+        Obtiene solo las transacciones de tipo 'egreso' de la base de datos.
+        Los ingresos se excluyen del análisis de grafos ya que no aportan
+        valor para el análisis de patrones de gasto.
 
         Args:
             db: Sesión de base de datos
 
         Returns:
-            Grafo dirigido con pesos (monto de transacción)
+            Lista de transacciones de tipo egreso
         """
-        transactions = db.query(Transaction).all()
+        return db.query(Transaction).filter(Transaction.tipo == 'egreso').all()
+
+    @staticmethod
+    def build_gt_from_db(db: Session) -> Dict[int, List[tuple]]:
+        """
+        Construye Grafo de Transacciones (GT) desde la base de datos.
+        Solo incluye transacciones de tipo 'egreso'.
+        """
+        transactions = GraphService._get_egreso_transactions(db)
         transactions_list = GraphService._transactions_to_dict_list(transactions)
         return GraphBuilder.build_gt(transactions_list)
 
@@ -31,16 +40,9 @@ class GraphService:
     def build_gc_from_db(db: Session) -> Dict[str, List[tuple]]:
         """
         Construye Grafo de Categorías (GC) desde la base de datos.
-
-        Conecta categorías basado en patrones de gasto.
-
-        Args:
-            db: Sesión de base de datos
-
-        Returns:
-            Grafo no dirigido con pesos (frecuencia y monto)
+        Solo incluye transacciones de tipo 'egreso'.
         """
-        transactions = db.query(Transaction).all()
+        transactions = GraphService._get_egreso_transactions(db)
         transactions_list = GraphService._transactions_to_dict_list(transactions)
         return GraphBuilder.build_gc(transactions_list)
 
@@ -48,61 +50,32 @@ class GraphService:
     def build_guc_from_db(db: Session) -> Dict[str, List[tuple]]:
         """
         Construye Grafo Usuario-Categoría (GUC) desde la base de datos.
-
-        Grafo bipartito entre usuarios y categorías.
-
-        Args:
-            db: Sesión de base de datos
-
-        Returns:
-            Grafo bipartito con pesos (monto total gastado)
+        Solo incluye transacciones de tipo 'egreso'.
         """
-        transactions = db.query(Transaction).all()
+        transactions = GraphService._get_egreso_transactions(db)
         transactions_list = GraphService._transactions_to_dict_list(transactions)
         return GraphBuilder.build_guc(transactions_list)
 
     @staticmethod
     def build_temporal_graph_from_db(db: Session, time_window_days: int = 7) -> Dict[int, List[tuple]]:
         """
-        Construye grafo temporal basado en ventana de tiempo desde la base de datos.
-
-        Args:
-            db: Sesión de base de datos
-            time_window_days: Ventana de tiempo en días
-
-        Returns:
-            Grafo con conexiones dentro de la ventana temporal
+        Construye grafo temporal. Solo incluye transacciones de tipo 'egreso'.
         """
-        transactions = db.query(Transaction).all()
+        transactions = GraphService._get_egreso_transactions(db)
         transactions_list = GraphService._transactions_to_dict_list(transactions)
         return GraphBuilder.build_temporal_graph(transactions_list, time_window_days)
 
     @staticmethod
     def build_weighted_category_graph_from_db(db: Session) -> Dict[str, List[tuple]]:
         """
-        Construye grafo de categorías con pesos basados en frecuencia de transición.
-
-        Args:
-            db: Sesión de base de datos
-
-        Returns:
-            Grafo de categorías con pesos de frecuencia
+        Construye grafo de categorías ponderado. Solo incluye transacciones de tipo 'egreso'.
         """
-        transactions = db.query(Transaction).all()
+        transactions = GraphService._get_egreso_transactions(db)
         transactions_list = GraphService._transactions_to_dict_list(transactions)
         return GraphBuilder.build_weighted_category_graph(transactions_list)
 
     @staticmethod
     def _transactions_to_dict_list(transactions: List[Transaction]) -> List[Dict[str, Any]]:
-        """
-        Convierte objetos Transaction a diccionarios para el procesamiento de grafos.
-
-        Args:
-            transactions: Lista de objetos Transaction
-
-        Returns:
-            Lista de diccionarios con datos de transacciones
-        """
         return [
             {
                 'id': trans.id,
@@ -112,7 +85,7 @@ class GraphService:
                 'subcategoria': trans.subcategoria,
                 'descripcion': trans.descripcion,
                 'metodo_pago': trans.metodo_pago,
-                'monto': abs(trans.monto),  # Usar valor absoluto
+                'monto': abs(trans.monto),
                 'usuario': trans.usuario
             }
             for trans in transactions
@@ -120,28 +93,10 @@ class GraphService:
 
     @staticmethod
     def get_graph_statistics(graph: Dict[Any, List[tuple]]) -> Dict[str, Any]:
-        """
-        Obtiene estadísticas de un grafo.
-
-        Args:
-            graph: Grafo representado como diccionario de adyacencia
-
-        Returns:
-            Dict con estadísticas del grafo
-        """
         return GraphBuilder.get_graph_stats(graph)
 
     @staticmethod
     def get_gt_statistics(db: Session) -> Dict[str, Any]:
-        """
-        Obtiene estadísticas del Grafo de Transacciones.
-
-        Args:
-            db: Sesión de base de datos
-
-        Returns:
-            Dict con estadísticas del GT
-        """
         gt = GraphService.build_gt_from_db(db)
         stats = GraphService.get_graph_statistics(gt)
         stats['graph_type'] = 'GT'
@@ -149,15 +104,6 @@ class GraphService:
 
     @staticmethod
     def get_gc_statistics(db: Session) -> Dict[str, Any]:
-        """
-        Obtiene estadísticas del Grafo de Categorías.
-
-        Args:
-            db: Sesión de base de datos
-
-        Returns:
-            Dict con estadísticas del GC
-        """
         gc = GraphService.build_gc_from_db(db)
         stats = GraphService.get_graph_statistics(gc)
         stats['graph_type'] = 'GC'
@@ -165,15 +111,6 @@ class GraphService:
 
     @staticmethod
     def get_guc_statistics(db: Session) -> Dict[str, Any]:
-        """
-        Obtiene estadísticas del Grafo Usuario-Categoría.
-
-        Args:
-            db: Sesión de base de datos
-
-        Returns:
-            Dict con estadísticas del GUC
-        """
         guc = GraphService.build_guc_from_db(db)
         stats = GraphService.get_graph_statistics(guc)
         stats['graph_type'] = 'GUC'
@@ -181,15 +118,6 @@ class GraphService:
 
     @staticmethod
     def compare_graph_types(db: Session) -> Dict[str, Any]:
-        """
-        Compara estadísticas de los tres tipos de grafos.
-
-        Args:
-            db: Sesión de base de datos
-
-        Returns:
-            Dict con estadísticas comparativas de todos los grafos
-        """
         return {
             'gt': GraphService.get_gt_statistics(db),
             'gc': GraphService.get_gc_statistics(db),
@@ -198,36 +126,33 @@ class GraphService:
 
     @staticmethod
     def get_graph_summary(db: Session) -> Dict[str, Any]:
-        """
-        Obtiene un resumen general de los grafos disponibles.
+        all_transactions = db.query(Transaction).all()
+        egresos = [t for t in all_transactions if t.tipo == 'egreso']
+        ingresos = [t for t in all_transactions if t.tipo == 'ingreso']
 
-        Args:
-            db: Sesión de base de datos
+        num_egresos = len(egresos)
+        total_egresos = sum(abs(t.monto) for t in egresos) if egresos else 0
+        total_ingresos = sum(abs(t.monto) for t in ingresos) if ingresos else 0
 
-        Returns:
-            Dict con resumen de grafos y estadísticas clave
-        """
-        transactions = db.query(Transaction).all()
-        num_transactions = len(transactions)
-
-        # Estadísticas de transacciones
-        total_amount = sum(t.monto for t in transactions) if transactions else 0
-
-        # Usuarios y categorías únicos
-        usuarios = set(t.usuario for t in transactions)
-        categorias = set(t.categoria for t in transactions)
+        usuarios = set(t.usuario for t in egresos)
+        categorias = set(t.categoria for t in egresos)
 
         return {
-            'num_transactions': num_transactions,
+            'num_transactions': len(all_transactions),
+            'num_egresos': num_egresos,
+            'num_ingresos': len(ingresos),
             'num_usuarios': len(usuarios),
             'num_categorias': len(categorias),
-            'total_amount': float(total_amount),
-            'avg_transaction': float(total_amount / num_transactions) if num_transactions > 0 else 0,
+            'total_egresos': float(total_egresos),
+            'total_ingresos': float(total_ingresos),
+            'balance': float(total_ingresos - total_egresos),
+            'avg_egreso': float(total_egresos / num_egresos) if num_egresos > 0 else 0,
             'graphs_available': {
-                'gt': num_transactions > 1,
+                'gt': num_egresos > 1,
                 'gc': len(categorias) > 1,
                 'guc': len(usuarios) > 0 and len(categorias) > 0
-            }
+            },
+            'nota': 'Los grafos solo incluyen transacciones de tipo egreso'
         }
 
 

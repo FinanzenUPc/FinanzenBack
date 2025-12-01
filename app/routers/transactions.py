@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
-from app.schemas.transaction import Transaction, TransactionCreate, TransactionUpdate
+from app.schemas.transaction import Transaction, TransactionCreate, TransactionUpdate, TransactionPaginatedResponse
 from app.services.transaction_service import transaction_service
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
@@ -17,17 +17,27 @@ def create_transaction(
     return transaction_service.create_transaction(db=db, transaction=transaction)
 
 
-@router.get("/", response_model=List[Transaction])
+@router.get("/", response_model=TransactionPaginatedResponse)
 def get_transactions(
     usuario: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    """Get all transactions, optionally filtered by user."""
+    """Get all transactions with pagination metadata, optionally filtered by user."""
     if usuario:
-        return transaction_service.get_user_transactions(db=db, usuario=usuario, skip=skip, limit=limit)
-    return transaction_service.get_all_transactions(db=db, skip=skip, limit=limit)
+        data = transaction_service.get_user_transactions(db=db, usuario=usuario, skip=skip, limit=limit)
+        total = transaction_service.count_user_transactions(db=db, usuario=usuario)
+    else:
+        data = transaction_service.get_all_transactions(db=db, skip=skip, limit=limit)
+        total = transaction_service.count_all_transactions(db=db)
+
+    return TransactionPaginatedResponse(
+        data=data,
+        total=total,
+        skip=skip,
+        limit=limit
+    )
 
 
 @router.get("/{transaction_id}", response_model=Transaction)

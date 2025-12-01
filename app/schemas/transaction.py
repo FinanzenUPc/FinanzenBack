@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, date
 
 
@@ -39,3 +39,14 @@ class TransactionInDB(TransactionBase):
 
 class Transaction(TransactionInDB):
     pass
+
+
+class TransactionPaginatedResponse(BaseModel):
+    """Paginated response for transactions."""
+    data: List[Transaction]
+    total: int
+    skip: int
+    limit: int
+
+    class Config:
+        from_attributes = True

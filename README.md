@@ -77,4 +77,3 @@ El backend incluye análisis financiero usando algoritmos de grafos:
 - **Análisis de Centralidad**: Identificar transacciones o categorías más importantes
 - **Detección de Ciclos**: Detectar patrones de gasto circular
 - **Análisis de Flujo**: Análisis de flujo de caja
-
