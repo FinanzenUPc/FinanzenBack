@@ -147,11 +147,15 @@ class AlgorithmsService:
             graph: Grafo representado como diccionario de adyacencia
 
         Returns:
-            Dict indicando si existe ciclo
+            Dict indicando si existe ciclo y el ciclo encontrado
         """
-        has_cycle = detect_cycle_dfs(graph)
+        result = detect_cycle_dfs(graph)
+        has_cycle = result['has_cycle']
+        cycle = result['cycle']
         return {
             'has_cycle': has_cycle,
+            'cycle': cycle,
+            'cycle_path': cycle,
             'cycle_detected': has_cycle,
             'is_acyclic': not has_cycle
         }

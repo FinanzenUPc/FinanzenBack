@@ -98,40 +98,54 @@ def dfs_paths(graph: Dict[int, List[int]], start: int, end: int, path: Optional[
     return paths
 
 
-def detect_cycle_dfs(graph: Dict[int, List[int]]) -> bool:
+def detect_cycle_dfs(graph: Dict[int, List[int]]) -> Dict[str, any]:
     """
-    Detecta ciclos en un grafo dirigido usando DFS.
+    Detecta ciclos en un grafo dirigido usando DFS y devuelve el ciclo si existe.
 
     Args:
         graph: Grafo representado como diccionario de adyacencia
 
     Returns:
-        True si hay ciclo, False en caso contrario
+        Dict con has_cycle (bool) y cycle (lista de nodos del ciclo)
     """
     visited = set()
     rec_stack = set()
+    path = []
+    cycle_found = []
 
-    def has_cycle(node: int) -> bool:
+    def find_cycle(node: int) -> bool:
         visited.add(node)
         rec_stack.add(node)
+        path.append(node)
 
         if node in graph:
             for neighbor in graph[node]:
                 if neighbor not in visited:
-                    if has_cycle(neighbor):
+                    if find_cycle(neighbor):
                         return True
                 elif neighbor in rec_stack:
+                    # Encontramos un ciclo - extraer el ciclo del path
+                    cycle_start_idx = path.index(neighbor)
+                    cycle_found.extend(path[cycle_start_idx:])
+                    cycle_found.append(neighbor)  # Cerrar el ciclo
                     return True
 
+        path.pop()
         rec_stack.remove(node)
         return False
 
     for node in graph:
         if node not in visited:
-            if has_cycle(node):
-                return True
+            if find_cycle(node):
+                return {
+                    'has_cycle': True,
+                    'cycle': cycle_found
+                }
 
-    return False
+    return {
+        'has_cycle': False,
+        'cycle': []
+    }
 
 
 def topological_sort_dfs(graph: Dict[int, List[int]]) -> Optional[List[int]]:
@@ -144,7 +158,8 @@ def topological_sort_dfs(graph: Dict[int, List[int]]) -> Optional[List[int]]:
     Returns:
         Lista con orden topológico o None si hay ciclo
     """
-    if detect_cycle_dfs(graph):
+    cycle_result = detect_cycle_dfs(graph)
+    if cycle_result['has_cycle']:
         return None
 
     visited = set()
